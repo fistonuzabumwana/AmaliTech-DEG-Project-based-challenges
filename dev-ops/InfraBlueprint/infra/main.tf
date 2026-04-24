@@ -182,6 +182,8 @@ resource "aws_instance" "web" {
 
   associate_public_ip_address = true
 
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+
   tags = {
     Name    = "vela-web"
     Project = "vela-payments"
@@ -251,4 +253,65 @@ resource "aws_db_instance" "db" {
     Name    = "vela-db"
     Project = "vela-payments"
   }
+}
+
+# S3 Bucket
+resource "aws_s3_bucket" "assets" {
+  bucket = var.s3_bucket_name
+
+  tags = {
+    Name    = "vela-assets"
+    Project = "vela-payments"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "assets_block" {
+  bucket = aws_s3_bucket.assets.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# IAM Role
+resource "aws_iam_role" "ec2_role" {
+  name = "vela-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_policy" "s3_policy" {
+  name = "vela-s3-access"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:PutObject"
+      ]
+      Resource = "${aws_s3_bucket.assets.arn}/*"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_s3" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = aws_iam_policy.s3_policy.arn
+}
+
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "vela-ec2-profile"
+  role = aws_iam_role.ec2_role.name
 }
