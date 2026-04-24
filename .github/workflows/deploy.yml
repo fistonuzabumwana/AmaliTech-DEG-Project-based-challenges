@@ -46,24 +46,33 @@ jobs:
       - name: Push image
         run: docker push ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}
 
-      # Deploy the new Docker image to the EC2 server
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.2.0
+      # Configure AWS credentials so GitHub Actions can call AWS Systems Manager.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-            docker pull ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}
+      # Deploy the new Docker image to EC2 using AWS Systems Manager Run Command.
+      - name: Deploy to EC2 using SSM
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy Docker container" \
+            --parameters 'commands=[
+              "docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}",
+              "docker pull ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}",
+              "docker stop deployready-app || true",
+              "docker rm deployready-app || true",
+              "docker run -d --name deployready-app --restart unless-stopped -e PORT=3000 -p 80:3000 ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
 
-            docker stop deployready-app || true
-            docker rm deployready-app || true
+          echo "Command ID: $COMMAND_ID"
 
-            docker run -d \
-              --name deployready-app \
-              --restart unless-stopped \
-              -e PORT=3000 \
-              -p 80:3000 \
-              ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}"
