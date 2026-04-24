@@ -56,26 +56,28 @@ jobs:
 
       # Deploy the new image with SSM and rollback to the previous image if health check fails.
       - name: Deploy to EC2 using SSM with rollback
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}
         run: |
           cat > ssm-parameters.json <<EOF
           {
             "commands": [
               "set -e",
-              "NEW_IMAGE=ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}",
+              "IMAGE='${IMAGE}'",
               "PREVIOUS_IMAGE=$(docker inspect --format='{{.Config.Image}}' deployready-app 2>/dev/null || true)",
               "echo Previous image: $PREVIOUS_IMAGE",
-              "echo New image: $NEW_IMAGE",
-              "docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}",
-              "docker pull $NEW_IMAGE",
+              "echo New image: $IMAGE",
+              "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin",
+              "docker pull '${IMAGE}'",
               "docker stop deployready-app || true",
               "docker rm deployready-app || true",
-              "docker run -d --name deployready-app --restart unless-stopped -e PORT=3000 -p 80:3000 $NEW_IMAGE",
+              "docker run -d --name deployready-app --restart unless-stopped -e PORT=3000 -p 80:3000 '${IMAGE}'",
               "sleep 10",
               "if curl -fsS http://localhost/health; then echo Deployment health check passed; exit 0; fi",
               "echo Deployment health check failed. Rolling back...",
               "docker stop deployready-app || true",
               "docker rm deployready-app || true",
-              "if [ -n \"$PREVIOUS_IMAGE\" ]; then docker run -d --name deployready-app --restart unless-stopped -e PORT=3000 -p 80:3000 $PREVIOUS_IMAGE; echo Rolled back to $PREVIOUS_IMAGE; else echo No previous image found for rollback; fi",
+              "if [ -n \"$PREVIOUS_IMAGE\" ]; then docker run -d --name deployready-app --restart unless-stopped -e PORT=3000 -p 80:3000 \"$PREVIOUS_IMAGE\"; echo Rolled back to $PREVIOUS_IMAGE; else echo No previous image found for rollback; fi",
               "exit 1"
             ]
           }
