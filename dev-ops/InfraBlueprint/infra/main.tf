@@ -187,3 +187,68 @@ resource "aws_instance" "web" {
     Project = "vela-payments"
   }
 }
+
+# DB Security Group
+resource "aws_security_group" "db_sg" {
+  name        = "db-sg"
+  description = "Allow PostgreSQL from web-sg only"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "PostgreSQL from EC2"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.web_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name    = "db-sg"
+    Project = "vela-payments"
+  }
+}
+
+# DB Subnet Group
+resource "aws_db_subnet_group" "db_subnets" {
+  name = "vela-db-subnet-group"
+
+  subnet_ids = [
+    aws_subnet.private_1.id,
+    aws_subnet.private_2.id
+  ]
+
+  tags = {
+    Name    = "db-subnet-group"
+    Project = "vela-payments"
+  }
+}
+
+# RDS PostgreSQL
+resource "aws_db_instance" "db" {
+  allocated_storage    = 20
+  engine               = "postgres"
+  engine_version       = "15"
+  instance_class       = "db.t3.micro"
+
+  db_name  = "veladb"
+  username = var.db_username
+  password = var.db_password
+
+  db_subnet_group_name = aws_db_subnet_group.db_subnets.name
+  vpc_security_group_ids = [aws_security_group.db_sg.id]
+
+  publicly_accessible = false
+  skip_final_snapshot = true
+
+  tags = {
+    Name    = "vela-db"
+    Project = "vela-payments"
+  }
+}
