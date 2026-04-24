@@ -1,140 +1,126 @@
-# DeployReady
+# DeployReady: Automated DevOps Ecosystem
 
-This challenge is designed to test your understanding of core DevOps practices: containerisation, automated pipelines, and cloud deployment.
+## Overview
 
----
+**DeployReady** is a high-performance, automated DevOps implementation demonstrating a comprehensive production-grade workflow. The project integrates advanced containerization, a robust CI/CD pipeline, and secure cloud orchestration on AWS to deliver a zero-touch deployment experience.
 
-## 1. Business Context
-
-**Client:** Kora Analytics
-**Industry:** SaaS — Data dashboards for logistics companies
-
-### The Problem
-
-Every time the Kora team wants to deploy a new version of their app, a developer manually SSHs into the server, pulls the code, and restarts the process by hand. There are no automated tests before a release and no way to tell if a deploy broke something until a customer complains.
-
-### Your Role
-
-You are joining as their first DevOps engineer. The application code already works — your job is to **containerise it, automate the delivery pipeline, and get it running on AWS**.
+By abstracting manual intervention through GitHub Actions and AWS Systems Manager (SSM), the system achieves superior operational security and reliability.
 
 ---
 
-## 2. The Application
+## 🛠 Architecture & Workflow
 
-A simple Node.js API is provided in the [`app/`](./app/) directory. It has three endpoints:
+The system follows a streamlined path from development to production:
 
-| Method | Route      | Description                            |
-| ------ | ---------- | -------------------------------------- |
-| GET    | `/health`  | Returns `{ "status": "ok" }`           |
-| GET    | `/metrics` | Returns uptime and memory usage        |
-| POST   | `/data`    | Accepts a JSON body and echoes it back |
+1.  **Version Control**: Code is pushed to GitHub.
+2.  **CI/CD Orchestration**: GitHub Actions triggers an automated pipeline.
+3.  **Artifact Management**: Optimized Docker images are built and published to the **GitHub Container Registry (GHCR)**.
+4.  **Cloud Orchestration**: AWS Systems Manager (SSM) executes remote deployment commands.
+5.  **Runtime**: The application serves traffic via Docker on an AWS EC2 instance.
 
-Run it locally:
+---
+
+## Key Features
+
+- **Zero-Trust Deployment**: Secure remote execution via AWS SSM, eliminating the need for open SSH ports during deployment.
+- **Automated Resilience**: Integrated health-check-driven rollback mechanism to handle failed releases.
+- **Optimized Containerization**: Multi-stage, non-root Docker builds for enhanced security and performance.
+- **Full Lifecycle Automation**: End-to-end pipeline covering testing, artifact generation, and environment promotion.
+
+---
+
+## API Reference
+
+The application serves a lightweight Node.js API designed for high availability and monitoring.
+
+| Method | Endpoint   | Description                                                       |
+| :----- | :--------- | :---------------------------------------------------------------- |
+| `GET`  | `/health`  | Returns real-time service availability status.                    |
+| `GET`  | `/metrics` | Provides system insights including uptime and memory utilization. |
+| `POST` | `/data`    | Echoes valid JSON payloads to verify end-to-end connectivity.     |
+
+---
+
+## Containerization Strategy
+
+Our container strategy prioritizes security and efficiency:
+
+- **Base Image**: Leverages `node:alpine` for a minimal attack surface and reduced image size.
+- **Process Security**: The application runs as a dedicated **non-root user**, mitigating potential container breakout risks.
+- **Optimized Build**: Layer caching is optimized by separating dependency installation from source code injection.
+- **Dynamic Configuration**: Port settings and secrets are managed via environment variables.
+
+### Local Development
+
+To replicate the production environment locally:
 
 ```bash
-cd app
-npm install
-npm start
+# 1. Initialize environment configurations
+cp .env.example .env
+
+# 2. Launch orchestrated services
+docker compose up --build
 ```
 
-Do not change the application logic. Your work is everything around it.
+---
+
+## CI/CD Pipeline Workflow
+
+The automated pipeline executes on every commit to the `main` branch to maintain continuous delivery:
+
+- **Validation**: Repository checkout and integrity verification.
+- **Testing**: Execution of core unit and regression tests (`npm test`).
+- **Containerization**: Generation of Docker images tagged with unique Git commit SHAs.
+- **Publication**: Secure push to the GitHub Container Registry (GHCR).
+- **Deployment**: Targeted AWS SSM command execution to refresh the production instance.
 
 ---
 
-## 3. The Assignment
+## Security & Infrastructure
 
-### Part 1 — Containerise the App
+Infrastructure is managed following the **Principle of Least Privilege**:
 
-**Deliverables:** A `Dockerfile` and a `docker-compose.yml` in the root of your repository.
-
-**Dockerfile requirements:**
-
-- The app must run inside a Docker container.
-- The container must accept a `PORT` environment variable.
-- The container must **not** run as the `root` user.
-
-**Docker Compose requirements:**
-
-- Define the app as a service in `docker-compose.yml`.
-- Map port `3000` on the host to the container.
-- Pass the `PORT` variable via an `.env` file (include a `.env.example` with placeholder values).
-- Running the following must start a working API:
-  ```bash
-  docker compose up --build
-  ```
+- **SSM-First Operations**: Standard deployments use SSM exclusively, allowing for a fully closed SSH perimeter.
+- **Access Control**: SSH access is strictly limited to authorized administrative IP addresses for emergency use only.
+- **Secret Management**: Sensitive credentials reside exclusively within GitHub Actions Secrets.
+- **IAM Scoping**: IAM roles are granularly scoped to provide only the necessary permissions for SSM and EC2 management.
 
 ---
 
-### Part 2 — Automate the Pipeline
+## Automated Rollback Mechanism
 
-**Deliverable:** A `.github/workflows/deploy.yml` GitHub Actions workflow.
+To ensure absolute service continuity, the deployment logic includes an automated safety net:
 
-The pipeline must run these steps **in order** on every push to `main`:
-
-1. **Test** — Run `npm test`. If tests fail, the pipeline stops. Nothing gets deployed.
-2. **Build** — Build the Docker image and tag it with the Git commit SHA.
-3. **Push** — Push the image to a container registry (GitHub Container Registry or AWS ECR).
-4. **Deploy** — Pull the new image on the EC2 server and restart the container.
-
-Additional requirements:
-
-- Secrets (SSH key, registry token) must be stored as **GitHub repository secrets** — never in the code.
-- Add a short comment above each step in the YAML explaining what it does.
+1.  **Snapshot**: The previous stable image reference is retained before updating.
+2.  **Deployment**: The new container is instantiated and initialized.
+3.  **Verification**: A post-deployment health probe targets the `/health` endpoint.
+4.  **Recovery**: If the probe fails, the system immediately terminates the faulty container and restores the previous known-good instance.
 
 ---
 
-### Part 3 — Deploy to AWS
+## Repository Structure
 
-**Deliverable:** A running service on AWS and a short `DEPLOYMENT.md` explaining your setup.
-
-Provision the following manually (via the AWS Console is fine):
-
-- An **EC2 instance** (`t2.micro`, Amazon Linux 2023) with Docker installed.
-- A **Security Group** that allows:
-  - HTTP on port 80 from anywhere
-  - SSH on port 22 **from your IP only** — not `0.0.0.0/0`
-- An **IAM user or role** for the pipeline with only the permissions it needs.
-
-At submission time, `GET http://<your-ec2-ip>/health` must return `{ "status": "ok" }`.
-
-Document in `DEPLOYMENT.md`:
-
-- How you set up the EC2 instance
-- How you installed Docker and pulled your image
-- How to check if the container is running
-- How to view the application logs
+```text
+dev-ops/DeployReady/
+├── app/               # Node.js Application Source
+├── Dockerfile         # Production Container Definition
+├── docker-compose.yml # Local Service Orchestration
+├── .env.example       # Template for Environment Variables
+├── DEPLOYMENT.md      # Detailed Infrastructure Documentation
+└── README.md          # Comprehensive Project Documentation
+```
 
 ---
 
-## 4. Bonus (Optional)
+## Deployment Status
 
-Pick **one** of the following if you want to go further:
-
-- **Use Terraform** to provision the EC2 instance and Security Group instead of the console.
-- **Add a CloudWatch alarm** that triggers if `/health` stops responding.
-- **Implement a rollback step** in the pipeline that re-deploys the previous image if the health check fails after deploy.
-
-Describe what you added and why in your `DEPLOYMENT.md`.
+The live production environment is accessible and monitored at:
+**[http://51.20.96.51/health](http://51.20.96.51/health)**
 
 ---
 
-## 5. Submission Instructions
+## Documentation
 
-1. **Fork** this repository.
-2. Complete all three parts in your fork.
-3. **Replace this README** with your own documentation (architecture overview, setup steps, decisions made).
-4. Submit your repo link via the [online form](https://forms.cloud.microsoft/e/f3FF83LVz3).
+For detailed infrastructure setups and step-by-step installation guides, please refer to:
 
----
-
-## ⚠️ Pre-Submission Checklist
-
-- [ ] `docker compose up --build` starts the app locally
-- [ ] A `.env.example` file is committed (the real `.env` is not)
-- [ ] At least one successful pipeline run is visible in the GitHub Actions tab
-- [ ] `GET /health` on your EC2 public IP returns 200
-- [ ] No secrets or `.pem` files committed to the repository
-- [ ] SSH port 22 is **not** open to `0.0.0.0/0`
-- [ ] `DEPLOYMENT.md` is present and covers the four points in Part 3
-- [ ] This README has been replaced with your own documentation
-- [ ] Commit history shows progress over time (not a single upload commit)
+- [DEPLOYMENT.md](file:///e:/bbb/DEPLOYMENT.md)
