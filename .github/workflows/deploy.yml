@@ -45,3 +45,25 @@ jobs:
       # Push Docker image
       - name: Push image
         run: docker push ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}
+
+      # Deploy the new Docker image to the EC2 server
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            docker pull ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}
+
+            docker stop deployready-app || true
+            docker rm deployready-app || true
+
+            docker run -d \
+              --name deployready-app \
+              --restart unless-stopped \
+              -e PORT=3000 \
+              -p 80:3000 \
+              ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}
