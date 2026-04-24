@@ -26,12 +26,12 @@ jobs:
 
       # Install dependencies
       - name: Install dependencies
-        working-directory: app
+        working-directory: dev-ops/DeployReady/app
         run: npm install
 
       # Run tests (pipeline stops if this fails)
       - name: Run tests
-        working-directory: app
+        working-directory: dev-ops/DeployReady/app
         run: npm test
 
       # Login to GitHub Container Registry
@@ -40,7 +40,7 @@ jobs:
 
       # Build Docker image
       - name: Build image
-        run: docker build -t ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }} .
+        run: docker build -t ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }} dev-ops/DeployReady
 
       # Push Docker image
       - name: Push image
