@@ -1,0 +1,47 @@
+name: Deploy Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Get the code from repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup Node.js to run tests
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Install dependencies
+      - name: Install dependencies
+        working-directory: app
+        run: npm install
+
+      # Run tests (pipeline stops if this fails)
+      - name: Run tests
+        working-directory: app
+        run: npm test
+
+      # Login to GitHub Container Registry
+      - name: Login to registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      # Build Docker image
+      - name: Build image
+        run: docker build -t ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }} .
+
+      # Push Docker image
+      - name: Push image
+        run: docker push ghcr.io/${{ github.repository_owner }}/deployready-app:${{ github.sha }}
