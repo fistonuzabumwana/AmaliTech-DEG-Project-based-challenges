@@ -1,0 +1,9 @@
+.env
+*.pem
+*.key
+node_modules/
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!example.tfvars
