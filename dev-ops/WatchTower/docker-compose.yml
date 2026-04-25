@@ -1,0 +1,52 @@
+services:
+  order-service:
+    build: ./app/order-service
+    container_name: order-service
+    ports:
+      - "${ORDER_SERVICE_PORT}:${ORDER_SERVICE_PORT}"
+    environment:
+      - PORT=${ORDER_SERVICE_PORT}
+      - SERVICE_NAME=${ORDER_SERVICE_NAME}
+    networks:
+      - watchtower-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  tracking-service:
+    build: ./app/tracking-service
+    container_name: tracking-service
+    ports:
+      - "${TRACKING_SERVICE_PORT}:${TRACKING_SERVICE_PORT}"
+    environment:
+      - PORT=${TRACKING_SERVICE_PORT}
+      - SERVICE_NAME=${TRACKING_SERVICE_NAME}
+    networks:
+      - watchtower-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  notification-service:
+    build: ./app/notification-service
+    container_name: notification-service
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT}:${NOTIFICATION_SERVICE_PORT}"
+    environment:
+      - PORT=${NOTIFICATION_SERVICE_PORT}
+      - SERVICE_NAME=${NOTIFICATION_SERVICE_NAME}
+    networks:
+      - watchtower-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  watchtower-net:
+    driver: bridge
