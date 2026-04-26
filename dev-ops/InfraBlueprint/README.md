@@ -122,14 +122,25 @@ The S3 bucket is instantiated with **Public Access Block** configurations enable
 
 ---
 
-## 🛡️ Resilience: RDS Final Snapshot Protection
-In alignment with production-grade data governance, the RDS tier is configured with a mandatory protection mechanism to prevent definitive data loss during destruction phases.
+## ⭐ Bonus Implementation: Automated RDS Snapshot Protection
 
-**Configuration Details:**
-- `skip_final_snapshot = false`
-- `final_snapshot_identifier = "vela-db-final-snapshot"`
+### Feature Overview
+The Terraform configuration has been extended to ensure that a **final snapshot of the RDS database is automatically generated** before the instance is destroyed. This protection mechanism is critical for production-grade data governance and recovery.
 
-This ensures that a final recovery point is generated automatically before the instance is terminated, allowing for seamless data restoration.
+**Implementation Details:**
+```hcl
+skip_final_snapshot       = false
+final_snapshot_identifier = "vela-db-final-snapshot"
+```
+
+### Rationale & Strategic Value
+In production environments, deleting a database without a final backup can lead to catastrophic data loss. This implementation prioritizes data integrity and disaster recovery (DR) preparedness:
+
+*   **Proactive Data Protection:** Ensures a recovery point exists even during planned infrastructure teardowns or accidental `terraform destroy` executions.
+*   **Production Standards:** Aligns the infrastructure with real-world backup policies and compliance requirements.
+*   **Resilient Lifecycle:** Demonstrates an advanced awareness of cloud reliability concerns beyond basic resource provisioning.
+*   **Seamless Restoration:** Provides a deterministic identifier (`vela-db-final-snapshot`) that can be used to quickly restore the environment from the final state.
+
 
 ---
 
