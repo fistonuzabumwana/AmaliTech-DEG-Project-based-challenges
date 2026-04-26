@@ -140,12 +140,26 @@ WatchTower/
     └── notification-service/
 ```
 
-## 📈 Future Roadmap
+## ⭐ Bonus Implementation: Uptime Monitoring Panel
 
-- [ ] **Notification Gateway:** Integrate Alertmanager for Slack and E-mail dispatching.
-- [ ] **Traceability:** Implement distributed tracing using OpenTelemetry and Jaeger.
-- [ ] **Log Aggregation:** Centralize logging with the ELK (Elasticsearch, Logstash, Kibana) stack.
-- [ ] **Orchestration Migration:** Transition to Kubernetes (K8s) for high availability.
+A dedicated time-series panel has been implemented in the Grafana dashboard to visualize **service uptime percentage over a rolling 24-hour window**.
+
+### Technical Implementation
+
+The panel utilizes the following Prometheus Query (PromQL) to aggregate historical health data:
+
+```promql
+avg_over_time(up[24h]) * 100
+```
+
+### Rationale & Value Proposition
+
+Monitoring uptime is a critical reliability metric for production-grade systems. This implementation provides significant value beyond real-time health checks:
+
+*   **Historical Stability:** While real-time checks show the current state, this panel identifies intermittent outages and historical flapping.
+*   **SLA/SLO Tracking:** Provides a quantifiable metric to measure system reliability against Service Level Agreements (SLAs).
+*   **Data-Driven Debugging:** Helps correlate historical downtime with specific deployment events or scaling activities.
+*   **Downtime Quantification:** Allows teams to move from anecdotal reports of "slowness" to concrete uptime percentages.
 
 ---
 © 2026 WatchTower Project. Built with stability and observability in mind.
