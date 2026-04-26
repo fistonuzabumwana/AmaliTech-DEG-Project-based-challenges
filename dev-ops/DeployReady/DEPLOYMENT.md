@@ -105,15 +105,32 @@ docker run -d \
 
 ---
 
-## 6. Resilience and Rollback Strategy
+## ⭐ Bonus Implementation: Automatic Rollback on Failed Deployment
 
-To guarantee high availability, the pipeline includes an automated rollback mechanism:
+### Feature Workflow
+The CI/CD pipeline has been enhanced with an autonomous rollback mechanism that ensures system stability by automatically reverting to the **previous stable Docker image** if a new deployment fails health validation.
 
-1.  **Backup**: The previous stable image reference is retained.
-2.  **Health Check**: Post-deployment, a health check probe is sent to `http://localhost/health`.
-3.  **Conditional Recovery**: If the health check fails or the container crashes within the first 60 seconds:
-    - The faulty container is immediately terminated.
-    - The previous stable image is automatically redeployed.
+**Automated Deployment Sequence:**
+1.  **State Preservation:** The currently running image identifier is cached as the "Last Known Good" version.
+2.  **Application Update:** The new container image is pulled and instantiated.
+3.  **Health Validation:** A critical health probe is executed against the endpoint:
+    ```bash
+    curl http://localhost/health
+    ```
+4.  **Autonomous Recovery:** If the probe fails to return a success signal:
+    *   The unstable container is immediately terminated and removed.
+    *   The previous stable image is redeployed to restore service parity.
+
+---
+
+### Rationale & Strategic Value
+In production-grade CI/CD environments, deployment failures (due to bugs, misconfigurations, or dependency conflicts) must be mitigated without manual human intervention:
+
+*   **High Availability (HA):** Significantly reduces Mean Time to Recovery (MTTR) by automating the rollback process.
+*   **Zero-Touch Recovery:** Eliminates the need for emergency manual SSH access or manual pipeline triggers during failures.
+*   **Production-Grade DevOps:** Aligns the project with industry standards for resilient, self-healing infrastructure.
+*   **Continuous Reliability:** Guarantees that the application remains accessible to end-users even if a faulty version is pushed to the `main` branch.
+
 
 ---
 
