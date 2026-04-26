@@ -68,6 +68,33 @@
         "x": 0,
         "y": 8
       }
+    },
+    {
+      "type": "timeseries",
+      "title": "Service Uptime Percentage - Last 24 Hours",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "targets": [
+        {
+          "expr": "avg_over_time(up{job=~\"order-service|tracking-service|notification-service\"}[24h]) * 100",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      }
     }
   ]
 }
