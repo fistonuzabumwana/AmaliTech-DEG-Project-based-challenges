@@ -57,6 +57,22 @@ services:
     networks:
       - watchtower-net
 
+  grafana:
+    image: grafana/grafana:10.4.6
+    container_name: grafana
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - watchtower-net
+    depends_on:
+      - prometheus
+
 networks:
   watchtower-net:
     driver: bridge
